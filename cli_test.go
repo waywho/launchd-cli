@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -244,8 +245,17 @@ func TestLoginWritesAIInstructions(t *testing.T) {
 	}
 
 	instructions, err := os.ReadFile(filepath.Join(cli.ConfigDir, "ai-instructions.md"))
-	if err != nil || !strings.Contains(string(instructions), "launchd deploy") {
+	if err != nil || !strings.Contains(string(instructions), "golaunchd deploy") {
 		t.Errorf("instructions file: %v, %q", err, instructions)
+	}
+}
+
+func TestTextsNameTheGolaunchdCommand(t *testing.T) {
+	oldName := regexp.MustCompile(`(^|[^o])launchd (login|logout|deploy)`)
+	for _, text := range []string{usage, aiInstructions, errLoggedOut.Error()} {
+		if oldName.MatchString(text) || !strings.Contains(text, "golaunchd ") {
+			t.Errorf("text does not name golaunchd: %q", text)
+		}
 	}
 }
 

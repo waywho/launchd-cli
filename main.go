@@ -12,9 +12,9 @@ import (
 )
 
 const usage = `Usage:
-  launchd login                                     Log in to Launchd in the browser.
-  launchd logout                                    Log this computer out.
-  launchd deploy [--name <app name>] [--no-browser] Deploy the app in this folder.
+  golaunchd login                                     Log in to Launchd in the browser.
+  golaunchd logout                                    Log this computer out.
+  golaunchd deploy [--name <app name>] [--no-browser] Deploy the app in this folder.
 `
 
 func main() {
