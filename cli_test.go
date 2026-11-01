@@ -71,6 +71,10 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 		json.NewEncoder(w).Encode(map[string][]string{"reserved": {"DATABASE_URL", "SECRET_KEY_BASE"}, "local_only": {"RAILS_ENV"}})
 	}))
 	mux.HandleFunc("PUT /api/apps/{name}/secrets", authed(func(w http.ResponseWriter, r *http.Request) {
+		if f.statuses[0] == "missing" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		var body struct {
 			Secrets map[string]string `json:"secrets"`
 		}
@@ -378,6 +382,26 @@ func TestSecondDeployReusesRemoteAndSendsSecretsBeforePush(t *testing.T) {
 	}
 	if env.api.statuses[0] != "live" || len(env.api.statuses) != 1 {
 		t.Errorf("the deploy ended before the new build: %v", env.api.statuses)
+	}
+}
+
+func TestDeployAfterAFailedFirstPushSendsSecretsAfterTheBuild(t *testing.T) {
+	env := newDeployEnv(t, "crm")
+	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1", ".env": "STRIPE_KEY=x"})
+	run(t, env.appDir, "init", "-q", "-b", "main")
+	run(t, env.appDir, "remote", "add", "launchd", env.cli.Git+"/tally/crm.git")
+	env.api.taken["crm"] = true
+	env.api.statuses = []string{"missing", "deploying", "live"}
+
+	if err := env.cli.Deploy("", true); err != nil {
+		t.Fatalf("%v\n%s", err, env.out)
+	}
+
+	if !maps.Equal(env.api.secrets, map[string]string{"STRIPE_KEY": "x"}) {
+		t.Errorf("sent %v\n%s", env.api.secrets, env.out)
+	}
+	if files := env.pushedFiles(t, "crm"); !slices.Equal(files, []string{"app.rb"}) {
+		t.Errorf("pushed %v", files)
 	}
 }
 

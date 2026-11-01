@@ -48,6 +48,7 @@ Invites and secrets are on https://launchd.eu/apps.
 var (
 	errLoggedOut   = errors.New("You are not logged in, or your login ended. Run launchd login.")
 	errBuildFailed = errors.New("The build failed.")
+	errNotFound    = errors.New("not found")
 	notAppNameChar = regexp.MustCompile(`[^a-z0-9]+`)
 	httpClient     = &http.Client{Timeout: 30 * time.Second}
 )
@@ -135,7 +136,7 @@ func (c *CLI) Logout() error {
 		fmt.Fprintln(c.Out, "You are not logged in.")
 		return nil
 	}
-	if _, err := c.request(http.MethodDelete, "/api/cli/token", cfg.Token, nil, nil); err != nil && !errors.Is(err, errLoggedOut) {
+	if _, err := c.request(http.MethodDelete, "/api/cli/token", cfg.Token, nil, nil); err != nil && !errors.Is(err, errLoggedOut) && !errors.Is(err, errNotFound) {
 		return err
 	}
 	if _, err := gitOutsideRepo(c.credential(cfg.Username, ""), "credential", "reject"); err != nil {
@@ -189,8 +190,12 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 		return err
 	}
 	// deployer creates the app record only after the first push, so the first deploy sends the secrets at the end.
+	// A first push that failed after the remote was added also leaves no app record.
+	secretsAfterBuild := firstDeploy
 	if !firstDeploy {
-		if err := c.sendSecrets(cfg.Token, name, secrets); err != nil {
+		err := c.sendSecrets(cfg.Token, name, secrets)
+		secretsAfterBuild = errors.Is(err, errNotFound)
+		if err != nil && !secretsAfterBuild {
 			return err
 		}
 	}
@@ -213,7 +218,7 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 	if err != nil {
 		return err
 	}
-	if firstDeploy && len(secrets) > 0 {
+	if secretsAfterBuild && len(secrets) > 0 {
 		if err := c.sendSecrets(cfg.Token, name, secrets); err != nil {
 			return err
 		}
@@ -350,11 +355,11 @@ func (c *CLI) waitForDeploy(token, name string) (appStatus, error) {
 	sawDeploying := false
 	for time.Since(start) < deployTimeout {
 		var status appStatus
-		code, err := c.request(http.MethodGet, "/api/apps/"+url.PathEscape(name)+"/status", token, nil, &status)
+		_, err := c.request(http.MethodGet, "/api/apps/"+url.PathEscape(name)+"/status", token, nil, &status)
 		switch {
+		case errors.Is(err, errNotFound):
 		case err != nil:
 			return status, err
-		case code == http.StatusNotFound:
 		case status.Status == "deploying":
 			sawDeploying = true
 		// Until deployer starts the new deploy, the status is the one of the last deploy.
@@ -419,7 +424,7 @@ func (c *CLI) request(method, path, token string, body, out any) (int, error) {
 	case response.StatusCode == http.StatusUnauthorized:
 		return response.StatusCode, errLoggedOut
 	case response.StatusCode == http.StatusNotFound:
-		return response.StatusCode, nil
+		return response.StatusCode, fmt.Errorf("Launchd answered %s to %s %s: %w", response.Status, method, path, errNotFound)
 	case response.StatusCode >= 300:
 		return response.StatusCode, fmt.Errorf("Launchd answered %s to %s %s. Try again.", response.Status, method, path)
 	}
