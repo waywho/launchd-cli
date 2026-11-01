@@ -32,10 +32,11 @@ type fakeAPI struct {
 	onSecrets     func()
 	tokenDeleted  bool
 	availableAsks []string
+	callbacks     chan *http.Response
 }
 
 func newFakeAPI(t *testing.T) *fakeAPI {
-	f := &fakeAPI{t: t, taken: map[string]bool{}, statuses: []string{"deploying", "live"}}
+	f := &fakeAPI{t: t, taken: map[string]bool{}, statuses: []string{"deploying", "live"}, callbacks: make(chan *http.Response, 1)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/cli/token", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -108,7 +109,13 @@ func (f *fakeAPI) openLogin(address string) error {
 	query := authorize.Query()
 	f.challenge = query.Get("code_challenge")
 	callback := query.Get("redirect_uri") + "?" + url.Values{"code": {"code-1"}, "state": {query.Get("state")}}.Encode()
-	go http.Get(callback)
+	go func() {
+		browser := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+		if response, err := browser.Get(callback); err == nil {
+			response.Body.Close()
+			f.callbacks <- response
+		}
+	}()
 	return nil
 }
 
@@ -247,6 +254,29 @@ func TestLoginWritesAIInstructions(t *testing.T) {
 	instructions, err := os.ReadFile(filepath.Join(cli.ConfigDir, "ai-instructions.md"))
 	if err != nil || !strings.Contains(string(instructions), "golaunchd deploy") {
 		t.Errorf("instructions file: %v, %q", err, instructions)
+	}
+}
+
+func TestLoginSendsTheBrowserToTheLoggedInPage(t *testing.T) {
+	isolateGit(t)
+	api := newFakeAPI(t)
+	out := &bytes.Buffer{}
+	cli := &CLI{API: api.srv.URL, Git: "https://git.launchd.eu", ConfigDir: t.TempDir(), Out: out, OpenBrowser: api.openLogin}
+
+	if err := cli.Login(); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case response := <-api.callbacks:
+		if response.StatusCode != http.StatusFound || response.Header.Get("Location") != api.srv.URL+"/cli/logged_in" {
+			t.Errorf("callback answered %d, Location %q", response.StatusCode, response.Header.Get("Location"))
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the callback did not answer")
+	}
+	if want := "To let an AI tool run golaunchd, give it this file: " + filepath.Join(cli.ConfigDir, "ai-instructions.md"); !strings.Contains(out.String(), want) {
+		t.Errorf("output %q does not contain %q", out, want)
 	}
 }
 
