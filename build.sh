@@ -6,6 +6,6 @@ for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; d
   os=${target%/*}
   arch=${target#*/}
   suffix=$([ "$os" = windows ] && echo .exe || true)
-  GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "dist/launchd-$os-$arch$suffix" .
+  GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "dist/golaunchd-$os-$arch$suffix" .
 done
 ls -l dist

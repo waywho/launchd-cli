@@ -34,19 +34,19 @@ const aiInstructions = `# Launchd
 Launchd puts a web app live at its own address. Only the people that the builder invites can open it.
 Run these commands in a terminal:
 
-- ` + "`launchd deploy`" + `: run it in the app folder. It deploys the app and prints its address.
+- ` + "`golaunchd deploy`" + `: run it in the app folder. It deploys the app and prints its address.
   - ` + "`--name <app name>`" + ` sets the app name. The default is the folder name. Use it when the name is taken.
   - ` + "`--no-browser`" + ` does not open the app page in the browser.
-- ` + "`launchd login`" + `: run it when a command says that the login ended.
-- ` + "`launchd logout`" + `: logs this computer out.
+- ` + "`golaunchd login`" + `: run it when a command says that the login ended.
+- ` + "`golaunchd logout`" + `: logs this computer out.
 
-` + "`launchd deploy`" + ` sends the values in ` + "`.env`" + ` as secrets, and never pushes the ` + "`.env`" + ` file.
+` + "`golaunchd deploy`" + ` sends the values in ` + "`.env`" + ` as secrets, and never pushes the ` + "`.env`" + ` file.
 When the build fails, it prints "Build failed" and the last lines of the build log.
 Invites and secrets are on https://launchd.eu/apps.
 `
 
 var (
-	errLoggedOut   = errors.New("You are not logged in, or your login ended. Run launchd login.")
+	errLoggedOut   = errors.New("You are not logged in, or your login ended. Run golaunchd login.")
 	errBuildFailed = errors.New("The build failed.")
 	errNotFound    = errors.New("not found")
 	notAppNameChar = regexp.MustCompile(`[^a-z0-9]+`)
@@ -82,7 +82,7 @@ func (c *CLI) Login() error {
 	codes := make(chan string, 1)
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/callback" || r.URL.Query().Get("state") != state {
-			http.Error(w, "This login link is not valid. Run launchd login again.", http.StatusBadRequest)
+			http.Error(w, "This login link is not valid. Run golaunchd login again.", http.StatusBadRequest)
 			return
 		}
 		fmt.Fprintln(w, "You are logged in. Go back to the terminal.")
@@ -106,7 +106,7 @@ func (c *CLI) Login() error {
 	select {
 	case code = <-codes:
 	case <-time.After(10 * time.Minute):
-		return errors.New("The login did not finish in 10 minutes. Run launchd login again.")
+		return errors.New("The login did not finish in 10 minutes. Run golaunchd login again.")
 	}
 	var tokens struct {
 		LaunchdToken string `json:"launchd_token"`
@@ -210,7 +210,7 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 	}
 	fmt.Fprintf(c.Out, "Sending %s to Launchd.\n", name)
 	if _, err := c.git("push", "-q", "launchd", "HEAD:refs/heads/main"); err != nil {
-		return fmt.Errorf("Git cannot push the app. If the error is about the login, run launchd login.\n%w", err)
+		return fmt.Errorf("Git cannot push the app. If the error is about the login, run golaunchd login.\n%w", err)
 	}
 
 	fmt.Fprintln(c.Out, "Building. This can take some minutes.")
@@ -222,7 +222,7 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 		if err := c.sendSecrets(cfg.Token, name, secrets); err != nil {
 			return err
 		}
-		fmt.Fprintln(c.Out, "The first build started before Launchd had the secrets. Run launchd deploy again to use them.")
+		fmt.Fprintln(c.Out, "The first build started before Launchd had the secrets. Run golaunchd deploy again to use them.")
 	}
 	if status.Status == "failed" {
 		fmt.Fprintf(c.Out, "Build failed. The last lines of the build log:\n%s\n", status.LogTail)
@@ -251,12 +251,12 @@ func (c *CLI) pickName(token, name string) (string, string, error) {
 			problem = fmt.Sprintf("The app name %s is taken.", name)
 		}
 		if !c.Interactive {
-			return "", "", fmt.Errorf("%s Run launchd deploy --name <another name>.", problem)
+			return "", "", fmt.Errorf("%s Run golaunchd deploy --name <another name>.", problem)
 		}
 		fmt.Fprintf(c.Out, "%s Type another app name: ", problem)
 		answer, err := answers.ReadString('\n')
 		if err != nil && answer == "" {
-			return "", "", fmt.Errorf("%s Run launchd deploy --name <another name>.", problem)
+			return "", "", fmt.Errorf("%s Run golaunchd deploy --name <another name>.", problem)
 		}
 		name = answer
 	}
