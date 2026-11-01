@@ -85,7 +85,7 @@ func (c *CLI) Login() error {
 			http.Error(w, "This login link is not valid. Run golaunchd login again.", http.StatusBadRequest)
 			return
 		}
-		fmt.Fprintln(w, "You are logged in. Go back to the terminal.")
+		http.Redirect(w, r, c.API+"/cli/logged_in", http.StatusFound)
 		select {
 		case codes <- r.URL.Query().Get("code"):
 		default:
@@ -126,7 +126,7 @@ func (c *CLI) Login() error {
 	if err := os.WriteFile(instructions, []byte(aiInstructions), 0o644); err != nil {
 		return err
 	}
-	fmt.Fprintf(c.Out, "You are logged in as %s.\nInstructions for AI tools: %s\n", tokens.Username, instructions)
+	fmt.Fprintf(c.Out, "You are logged in as %s.\nTo let an AI tool run golaunchd, give it this file: %s\n", tokens.Username, instructions)
 	return nil
 }
 
