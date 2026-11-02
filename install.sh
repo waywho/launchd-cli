@@ -15,12 +15,29 @@ esac
 
 dir="$HOME/.local/bin"
 mkdir -p "$dir"
-curl -fsSL "https://github.com/waywho/launchd-cli/releases/latest/download/golaunchd-$os-$arch" -o "$dir/golaunchd"
+curl -fsSL "${GOLAUNCHD_DOWNLOAD_URL:-https://github.com/waywho/launchd-cli/releases/latest/download/golaunchd-$os-$arch}" -o "$dir/golaunchd"
 chmod +x "$dir/golaunchd"
-echo "Installed $dir/golaunchd"
 
-case ":$PATH:" in
-  *":$dir:"*) echo "Next step: run golaunchd login" ;;
-  *) echo "Add this line to your shell profile, open a new terminal, then run golaunchd login:"
-     echo "  export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
-esac
+add_path_line() {
+  line='export PATH="$HOME/.local/bin:$PATH"'
+  grep -qxF "$line" "$1" 2>/dev/null || printf '\n%s\n' "$line" >>"$1"
+}
+
+link_dir="${GOLAUNCHD_LINK_DIR:-/usr/local/bin}"
+if [ -d "$link_dir" ] && [ -w "$link_dir" ]; then
+  ln -sf "$dir/golaunchd" "$link_dir/golaunchd"
+else
+  add_path_line "${ZDOTDIR:-$HOME}/.zshenv"
+  if [ "$os" = linux ]; then
+    for file in "$HOME/.profile" "$HOME/.bashrc"; do
+      [ -f "$file" ] && add_path_line "$file"
+    done
+  fi
+fi
+
+if command -v zsh >/dev/null; then check_shell="zsh"; else check_shell="sh"; fi
+if "$check_shell" -c 'command -v golaunchd' >/dev/null 2>&1; then
+  echo "golaunchd is installed. Next step: run golaunchd login"
+else
+  echo "golaunchd is installed. Next step: open a new terminal and run golaunchd login"
+fi

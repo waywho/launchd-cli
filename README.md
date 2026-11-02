@@ -8,8 +8,11 @@ The command is not called `launchd`, because macOS has its own `/sbin/launchd`, 
 
 The install scripts download the newest binary from the GitHub releases of this repo. An anonymous download works only when the repo is public.
 
-- macOS and Linux: `curl -fsSL https://raw.githubusercontent.com/waywho/launchd-cli/main/install.sh | sh`. It puts `golaunchd` in `~/.local/bin`.
-- Windows (PowerShell): `irm https://raw.githubusercontent.com/waywho/launchd-cli/main/install.ps1 | iex`. It puts `golaunchd.exe` in `%LOCALAPPDATA%\Programs\golaunchd` and adds that folder to the user `Path`.
+- macOS and Linux: `curl -fsSL https://raw.githubusercontent.com/waywho/launchd-cli/main/install.sh | sh`. It puts `golaunchd` in `~/.local/bin`. The user does no manual step:
+  - When the user can write to `/usr/local/bin`, the script adds a link to `golaunchd` there.
+  - Else it adds `export PATH="$HOME/.local/bin:$PATH"` to `~/.zshenv`. On Linux, it also adds the line to `~/.profile` and `~/.bashrc` when they exist. It adds the line only once and never uses `sudo`.
+  - Then it checks that a new `zsh -c` (or `sh -c`) finds `golaunchd`, and prints the next step.
+- Windows (PowerShell): `irm https://raw.githubusercontent.com/waywho/launchd-cli/main/install.ps1 | iex`. It puts `golaunchd.exe` in `%LOCALAPPDATA%\Programs\golaunchd` and adds that folder to the user `Path`. Then it checks that a new PowerShell process finds `golaunchd`, and prints the next step.
 
 ## Commands
 
@@ -24,6 +27,7 @@ The install scripts download the newest binary from the GitHub releases of this 
 ## Development
 
 - Test: `go test ./...`. The tests use a fake `launchd` API and local bare Git repos. No test calls the real server.
+- Installer test: `sh test/install_test.sh`. It builds `golaunchd` and runs `install.sh` with a temp `HOME`. `GOLAUNCHD_DOWNLOAD_URL` sets the download address, and `GOLAUNCHD_LINK_DIR` sets the link folder.
 - Lint: `gofmt -l .` (no output) and `go vet ./...`.
 - Build: `./build.sh` puts the five binaries in `dist/`.
 - Release: push a tag such as `v0.1.0`. The workflow `release.yml` tests, builds and attaches the binaries to a GitHub release.
