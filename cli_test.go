@@ -69,7 +69,7 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 		f.availableAsks = append(f.availableAsks, name)
 		json.NewEncoder(w).Encode(map[string]any{"host": name + "-tally.apps.golaunchd.eu", "available": !f.taken[name]})
 	}))
-	mux.HandleFunc("GET /api/env_rules", authed(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/env-rules", authed(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string][]string{"reserved": {"DATABASE_URL", "SECRET_KEY_BASE"}, "local_only": {"RAILS_ENV"}})
 	}))
 	mux.HandleFunc("PUT /api/apps/{name}/secrets", authed(func(w http.ResponseWriter, r *http.Request) {
@@ -269,7 +269,7 @@ func TestLoginSendsTheBrowserToTheLoggedInPage(t *testing.T) {
 
 	select {
 	case response := <-api.callbacks:
-		if response.StatusCode != http.StatusFound || response.Header.Get("Location") != api.srv.URL+"/cli/logged_in" {
+		if response.StatusCode != http.StatusFound || response.Header.Get("Location") != api.srv.URL+"/cli/logged-in" {
 			t.Errorf("callback answered %d, Location %q", response.StatusCode, response.Header.Get("Location"))
 		}
 	case <-time.After(5 * time.Second):
@@ -277,6 +277,25 @@ func TestLoginSendsTheBrowserToTheLoggedInPage(t *testing.T) {
 	}
 	if want := "To let an AI tool run golaunchd, give it this file: " + filepath.Join(cli.ConfigDir, "ai-instructions.md"); !strings.Contains(out.String(), want) {
 		t.Errorf("output %q does not contain %q", out, want)
+	}
+}
+
+func TestLoginUsesTheHyphenLoggedInPath(t *testing.T) {
+	isolateGit(t)
+	api := newFakeAPI(t)
+	cli := &CLI{API: api.srv.URL, Git: "https://git.launchd.eu", ConfigDir: t.TempDir(), Out: &bytes.Buffer{}, OpenBrowser: api.openLogin}
+
+	if err := cli.Login(); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case response := <-api.callbacks:
+		if location := response.Header.Get("Location"); location != api.srv.URL+"/cli/logged-in" {
+			t.Errorf("Location %q", location)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the callback did not answer")
 	}
 }
 

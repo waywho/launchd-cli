@@ -85,7 +85,7 @@ func (c *CLI) Login() error {
 			http.Error(w, "This login link is not valid. Run golaunchd login again.", http.StatusBadRequest)
 			return
 		}
-		http.Redirect(w, r, c.API+"/cli/logged_in", http.StatusFound)
+		http.Redirect(w, r, c.API+"/cli/logged-in", http.StatusFound)
 		select {
 		case codes <- r.URL.Query().Get("code"):
 		default:
@@ -182,7 +182,7 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 	}
 
 	var rules map[string][]string
-	if _, err := c.request(http.MethodGet, "/api/env_rules", cfg.Token, nil, &rules); err != nil {
+	if _, err := c.request(http.MethodGet, "/api/env-rules", cfg.Token, nil, &rules); err != nil {
 		return err
 	}
 	secrets, err := c.readSecrets(rules)
