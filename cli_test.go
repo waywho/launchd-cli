@@ -92,8 +92,15 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 		if len(f.statuses) > 1 {
 			f.statuses = f.statuses[1:]
 		}
-		if status == "missing" {
+		switch status {
+		case "missing":
 			w.WriteHeader(http.StatusNotFound)
+			return
+		case "502":
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		case "503":
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]string{"status": status, "owner": "tally", "log_tail": f.logTail})
@@ -524,6 +531,19 @@ func TestDeployPrintsBuildFailedWithLogTail(t *testing.T) {
 	}
 	if len(env.browsers) != 0 {
 		t.Errorf("opened %v", env.browsers)
+	}
+}
+
+func TestDeployKeepsWaitingWhileLaunchdRestarts(t *testing.T) {
+	env := newDeployEnv(t, "crm")
+	env.api.statuses = []string{"502", "503", "deploying", "live"}
+	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1"})
+
+	if err := env.cli.Deploy("", true); err != nil {
+		t.Fatalf("%v\n%s", err, env.out)
+	}
+	if !strings.Contains(env.out.String(), "Your app is live at") {
+		t.Errorf("output does not say the app is live:\n%s", env.out)
 	}
 }
 

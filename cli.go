@@ -355,9 +355,9 @@ func (c *CLI) waitForDeploy(token, name string) (appStatus, error) {
 	sawDeploying := false
 	for time.Since(start) < deployTimeout {
 		var status appStatus
-		_, err := c.request(http.MethodGet, "/api/apps/"+url.PathEscape(name)+"/status", token, nil, &status)
+		code, err := c.request(http.MethodGet, "/api/apps/"+url.PathEscape(name)+"/status", token, nil, &status)
 		switch {
-		case errors.Is(err, errNotFound):
+		case errors.Is(err, errNotFound), code == http.StatusBadGateway, code == http.StatusServiceUnavailable:
 		case err != nil:
 			return status, err
 		case status.Status == "deploying":
