@@ -40,13 +40,15 @@ func unpackZip(zipPath, dir string) error {
 		if entry.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("The zip has a symbolic link: %s.", entry.Name)
 		}
-		if !filepath.IsLocal(entry.Name) {
-			return fmt.Errorf("The zip has a file outside its folder: %s.", entry.Name)
-		}
 		kept = append(kept, entry)
 	}
 
 	prefix := singleTopFolder(kept)
+	for _, entry := range kept {
+		if name := strings.TrimPrefix(entry.Name, prefix); !filepath.IsLocal(entry.Name) || name != "" && !filepath.IsLocal(name) {
+			return fmt.Errorf("The zip has a file outside its folder: %s.", entry.Name)
+		}
+	}
 	total := 0
 	for _, entry := range kept {
 		name := strings.TrimSuffix(strings.TrimPrefix(entry.Name, prefix), "/")

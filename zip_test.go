@@ -115,6 +115,17 @@ func TestUnpackZipRefusesDotDot(t *testing.T) {
 	}
 }
 
+func TestUnpackZipRefusesDotDotThatLeavesTheTopFolder(t *testing.T) {
+	dir, err := unpackTestZip(t, map[string]string{"leave-tracker/Dockerfile": "FROM ruby\n", "leave-tracker/../escaped": "bad"})
+	if err == nil || err.Error() != "The zip has a file outside its folder: leave-tracker/../escaped." {
+		t.Fatalf("error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(filepath.Dir(dir), "escaped")); err == nil {
+		t.Error("unpackZip wrote outside the folder")
+	}
+}
+
 func TestUnpackZipRefusesAnAbsolutePath(t *testing.T) {
 	_, err := unpackTestZip(t, map[string]string{"/evil.txt": "bad"})
 	if err == nil || err.Error() != "The zip has a file outside its folder: /evil.txt." {
