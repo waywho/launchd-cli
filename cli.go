@@ -45,6 +45,13 @@ When the build fails, it prints "Build failed" and the last lines of the build l
 Invites and secrets are on https://launchd.eu/apps.
 `
 
+const skillFile = `---
+name: launchd
+description: Use when the user wants to deploy an app or put it live on Launchd.
+---
+
+` + aiInstructions
+
 var (
 	errLoggedOut   = errors.New("You are not logged in, or your login ended. Run golaunchd login.")
 	errBuildFailed = errors.New("The build failed.")
@@ -54,12 +61,16 @@ var (
 )
 
 type CLI struct {
-	API, Git, Public, ConfigDir, Dir string
-	In                               io.Reader
-	Out                              io.Writer
-	Interactive                      bool
-	OpenBrowser                      func(string) error
-	PollInterval, DeployWait         time.Duration
+	API, Git, Public, ConfigDir, ClaudeDir, Dir string
+	In                                          io.Reader
+	Out                                         io.Writer
+	Interactive                                 bool
+	OpenBrowser                                 func(string) error
+	PollInterval, DeployWait                    time.Duration
+}
+
+type loginAnswer struct {
+	Code, Skill string
 }
 
 type config struct {
@@ -79,7 +90,7 @@ func (c *CLI) Login() error {
 	if err != nil {
 		return err
 	}
-	codes := make(chan string, 1)
+	codes := make(chan loginAnswer, 1)
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/callback" || r.URL.Query().Get("state") != state {
 			http.Error(w, "This login link is not valid. Run golaunchd login again.", http.StatusBadRequest)
@@ -87,24 +98,29 @@ func (c *CLI) Login() error {
 		}
 		http.Redirect(w, r, c.API+"/cli/logged-in", http.StatusFound)
 		select {
-		case codes <- r.URL.Query().Get("code"):
+		case codes <- loginAnswer{Code: r.URL.Query().Get("code"), Skill: r.URL.Query().Get("skill")}:
 		default:
 		}
 	})}
 	go server.Serve(listener)
 	defer server.Shutdown(context.Background())
 
+	skill := "missing"
+	if _, err := os.Stat(filepath.Join(c.ClaudeDir, "skills", "launchd", "SKILL.md")); err == nil {
+		skill = "present"
+	}
 	address := c.API + "/cli/authorize?" + url.Values{
 		"redirect_uri":   {"http://" + listener.Addr().String() + "/callback"},
 		"code_challenge": {base64.RawURLEncoding.EncodeToString(challenge[:])},
 		"state":          {state},
+		"skill":          {skill},
 	}.Encode()
 	fmt.Fprintf(c.Out, "Log in to Launchd in your browser. If the browser does not open, open this address:\n%s\n", address)
 	c.OpenBrowser(address)
 
-	var code string
+	var answer loginAnswer
 	select {
-	case code = <-codes:
+	case answer = <-codes:
 	case <-time.After(10 * time.Minute):
 		return errors.New("The login did not finish in 10 minutes. Run golaunchd login again.")
 	}
@@ -113,7 +129,7 @@ func (c *CLI) Login() error {
 		ForgejoToken string `json:"forgejo_token"`
 		Username     string `json:"username"`
 	}
-	if _, err := c.request(http.MethodPost, "/api/cli/token", "", map[string]string{"code": code, "code_verifier": verifier}, &tokens); err != nil {
+	if _, err := c.request(http.MethodPost, "/api/cli/token", "", map[string]string{"code": answer.Code, "code_verifier": verifier}, &tokens); err != nil {
 		return err
 	}
 	if err := c.storeGitToken(tokens.Username, tokens.ForgejoToken); err != nil {
@@ -126,8 +142,21 @@ func (c *CLI) Login() error {
 	if err := os.WriteFile(instructions, []byte(aiInstructions), 0o644); err != nil {
 		return err
 	}
+	if answer.Skill == "yes" {
+		if err := c.writeSkill(); err != nil {
+			return err
+		}
+	}
 	fmt.Fprintf(c.Out, "You are logged in as %s.\nTo let an AI tool run golaunchd, give it this file: %s\n", tokens.Username, instructions)
 	return nil
+}
+
+func (c *CLI) writeSkill() error {
+	dir := filepath.Join(c.ClaudeDir, "skills", "launchd")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(skillFile), 0o644)
 }
 
 func (c *CLI) Logout() error {

@@ -28,10 +28,19 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	claudeDir := os.Getenv("CLAUDE_CONFIG_DIR")
+	if claudeDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		claudeDir = filepath.Join(home, ".claude")
+	}
 	stdin, err := os.Stdin.Stat()
 	cli := &CLI{
 		API: "https://auth.launchd.eu", Git: "https://git.launchd.eu", Public: "https://launchd.eu",
-		ConfigDir: filepath.Join(configDir, "launchd"), Dir: dir, In: os.Stdin, Out: os.Stdout,
+		ConfigDir: filepath.Join(configDir, "launchd"), ClaudeDir: claudeDir, Dir: dir, In: os.Stdin, Out: os.Stdout,
 		Interactive: err == nil && stdin.Mode()&os.ModeCharDevice != 0, OpenBrowser: openBrowser,
 		PollInterval: 3 * time.Second, DeployWait: time.Minute,
 	}
