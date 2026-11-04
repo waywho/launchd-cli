@@ -33,6 +33,8 @@ type fakeAPI struct {
 	tokenDeleted  bool
 	availableAsks []string
 	callbacks     chan *http.Response
+	authorizeURL  string
+	skill         string
 }
 
 func newFakeAPI(t *testing.T) *fakeAPI {
@@ -112,10 +114,15 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 
 // openLogin plays the browser: it signs in and follows the redirect to the CLI's callback.
 func (f *fakeAPI) openLogin(address string) error {
+	f.authorizeURL = address
 	authorize, _ := url.Parse(address)
 	query := authorize.Query()
 	f.challenge = query.Get("code_challenge")
-	callback := query.Get("redirect_uri") + "?" + url.Values{"code": {"code-1"}, "state": {query.Get("state")}}.Encode()
+	callbackQuery := url.Values{"code": {"code-1"}, "state": {query.Get("state")}}
+	if f.skill != "" {
+		callbackQuery.Set("skill", f.skill)
+	}
+	callback := query.Get("redirect_uri") + "?" + callbackQuery.Encode()
 	go func() {
 		browser := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 		if response, err := browser.Get(callback); err == nil {
@@ -261,6 +268,76 @@ func TestLoginWritesAIInstructions(t *testing.T) {
 	instructions, err := os.ReadFile(filepath.Join(cli.ConfigDir, "ai-instructions.md"))
 	if err != nil || !strings.Contains(string(instructions), "golaunchd deploy") {
 		t.Errorf("instructions file: %v, %q", err, instructions)
+	}
+}
+
+func newLoginCLI(t *testing.T, api *fakeAPI) (*CLI, string) {
+	claudeDir := t.TempDir()
+	return &CLI{API: api.srv.URL, Git: "https://git.launchd.eu", ConfigDir: t.TempDir(), ClaudeDir: claudeDir, Out: &bytes.Buffer{}, OpenBrowser: api.openLogin}, claudeDir
+}
+
+func TestLoginAsksForTheSkillWhenItIsMissing(t *testing.T) {
+	isolateGit(t)
+	api := newFakeAPI(t)
+	cli, _ := newLoginCLI(t, api)
+
+	if err := cli.Login(); err != nil {
+		t.Fatal(err)
+	}
+
+	authorize, _ := url.Parse(api.authorizeURL)
+	if skill := authorize.Query().Get("skill"); skill != "missing" {
+		t.Errorf("authorize skill is %q", skill)
+	}
+}
+
+func TestLoginSaysTheSkillIsPresent(t *testing.T) {
+	isolateGit(t)
+	api := newFakeAPI(t)
+	cli, claudeDir := newLoginCLI(t, api)
+	writeFiles(t, claudeDir, map[string]string{"skills/launchd/SKILL.md": "old"})
+
+	if err := cli.Login(); err != nil {
+		t.Fatal(err)
+	}
+
+	authorize, _ := url.Parse(api.authorizeURL)
+	if skill := authorize.Query().Get("skill"); skill != "present" {
+		t.Errorf("authorize skill is %q", skill)
+	}
+	if content, _ := os.ReadFile(filepath.Join(claudeDir, "skills", "launchd", "SKILL.md")); string(content) != "old" {
+		t.Errorf("skill file holds %q", content)
+	}
+}
+
+func TestLoginWritesTheSkillAfterAYes(t *testing.T) {
+	isolateGit(t)
+	api := newFakeAPI(t)
+	api.skill = "yes"
+	cli, claudeDir := newLoginCLI(t, api)
+
+	if err := cli.Login(); err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(claudeDir, "skills", "launchd", "SKILL.md"))
+	if err != nil || !strings.HasPrefix(string(content), "---\nname: launchd\n") {
+		t.Errorf("skill file: %v, %q", err, content)
+	}
+}
+
+func TestLoginWritesNoSkillAfterANo(t *testing.T) {
+	isolateGit(t)
+	api := newFakeAPI(t)
+	api.skill = "no"
+	cli, claudeDir := newLoginCLI(t, api)
+
+	if err := cli.Login(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(claudeDir, "skills", "launchd", "SKILL.md")); !os.IsNotExist(err) {
+		t.Errorf("skill file exists: %v", err)
 	}
 }
 
