@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Unpack a zip with size and path checks
+- Write the Launchd skill after the builder says yes
 
 ## [0.1.0] - 2026-11-04
 ### Changed
