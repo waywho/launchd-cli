@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -55,6 +57,47 @@ func TestMCPListsDeployAndStatus(t *testing.T) {
 	wantStatus := "Shows whether a Launchd app is building, live, or failed, with the last lines of the build log when it failed."
 	if byName["status"] != wantStatus {
 		t.Errorf("status description: %q", byName["status"])
+	}
+}
+
+func TestMCPToolArgumentsTellTheAIWhatToPass(t *testing.T) {
+	env := newDeployEnv(t)
+	sess, cleanup := newMCPEnv(t, env.cli)
+	defer cleanup()
+
+	tools, err := sess.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type schema struct {
+		Properties map[string]struct {
+			Description string `json:"description"`
+		} `json:"properties"`
+		Required []string `json:"required"`
+	}
+	schemas := map[string]schema{}
+	for _, tool := range tools.Tools {
+		raw, _ := json.Marshal(tool.InputSchema)
+		var s schema
+		if err := json.Unmarshal(raw, &s); err != nil {
+			t.Fatal(err)
+		}
+		schemas[tool.Name] = s
+	}
+
+	want := []struct{ tool, arg, description string }{
+		{"deploy", "zip_name", "The file name of the zip in Downloads, or the full path of the zip."},
+		{"deploy", "replace", "Set to true only after the user says yes to replace the live app."},
+		{"status", "name", "The app name that deploy gave."},
+	}
+	for _, w := range want {
+		if got := schemas[w.tool].Properties[w.arg].Description; got != w.description {
+			t.Errorf("%s %s description: %q", w.tool, w.arg, got)
+		}
+	}
+	if !slices.Equal(schemas["deploy"].Required, []string{"zip_name"}) || !slices.Equal(schemas["status"].Required, []string{"name"}) {
+		t.Errorf("required: deploy %v, status %v", schemas["deploy"].Required, schemas["status"].Required)
 	}
 }
 

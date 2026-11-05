@@ -11,12 +11,12 @@ import (
 )
 
 type deployArgs struct {
-	ZipName string `json:"zip_name" jsonschema:"required"`
-	Replace *bool  `json:"replace,omitempty"`
+	ZipName string `json:"zip_name" jsonschema:"The file name of the zip in Downloads, or the full path of the zip."`
+	Replace *bool  `json:"replace,omitempty" jsonschema:"Set to true only after the user says yes to replace the live app."`
 }
 
 type statusArgs struct {
-	Name string `json:"name" jsonschema:"required"`
+	Name string `json:"name" jsonschema:"The app name that deploy gave."`
 }
 
 func runMCPServer(cli *CLI) error {
