@@ -1,0 +1,42 @@
+{
+  "manifest_version": "0.3",
+  "name": "launchd",
+  "display_name": "Launchd",
+  "version": "0.0.0",
+  "description": "Deploy an app to Launchd from a zip, and see whether it is live.",
+  "author": {
+    "name": "Launchd"
+  },
+  "homepage": "https://launchd.eu",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waywho/launchd-cli"
+  },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/golaunchd",
+    "mcp_config": {
+      "command": "${__dirname}/server/golaunchd",
+      "args": ["mcp"],
+      "platform_overrides": {
+        "win32": {
+          "command": "${__dirname}/server/golaunchd.exe",
+          "args": ["mcp"]
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "deploy",
+      "description": "Use when the user wants to put an app live on Launchd. Launchd builds the app on its servers. Do not build or run the app on this computer."
+    },
+    {
+      "name": "status",
+      "description": "Shows whether a Launchd app is building, live, or failed, with the last lines of the build log when it failed."
+    }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32"]
+  }
+}
