@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Add `AGENTS.md` with the rule that each PR description has a changelog heading.
+- Deploy an app from a zip in Downloads. A zip that has the name of a live app deploys only after the user says yes to the replace.
 ### Changed
 - Unpack a zip with size and path checks
 - Write the Launchd skill after the builder says yes
