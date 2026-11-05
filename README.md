@@ -1,6 +1,6 @@
 # launchd-cli
 
-The `golaunchd` command: `login`, `logout` and `deploy`. Plan: Task 19 in `~/Documents/src/plans/launchd/week1-demo/plan.md`.
+The `golaunchd` command: `login`, `logout`, `deploy` and `mcp`. Plan: Task 19 in `~/Documents/src/plans/launchd/week1-demo/plan.md`.
 
 The command is not called `launchd`, because macOS has its own `/sbin/launchd`, and `/sbin` comes before `~/.local/bin` in the `PATH`.
 
@@ -13,6 +13,7 @@ The install scripts download the newest binary from the GitHub releases of this 
   - Else it adds `export PATH="$HOME/.local/bin:$PATH"` to `~/.zshenv`. On Linux, it also adds the line to `~/.profile` and `~/.bashrc` when they exist. It adds the line only once and never uses `sudo`.
   - Then it checks that a new `zsh -c` (or `sh -c`) finds `golaunchd`, and prints the next step.
 - Windows (PowerShell): `irm https://github.com/waywho/launchd-cli/releases/latest/download/install.ps1 | iex`. It puts `golaunchd.exe` in `%LOCALAPPDATA%\Programs\golaunchd` and adds that folder to the user `Path`. Then it checks that a new PowerShell process finds `golaunchd`, and prints the next step.
+- Claude desktop on macOS: download https://github.com/waywho/launchd-cli/releases/latest/download/launchd-darwin.mcpb and open the file. Claude desktop installs the extension. Then tell Claude in a chat: put my app on Launchd. On Windows, the file is `launchd-windows.mcpb`.
 
 ## Release
 
@@ -27,6 +28,9 @@ Add the label `major`, `minor` or `patch` to a PR. Its merge makes the release.
   2. It commits all files that `.gitignore` allows, but never a `.env` file. It stops when an earlier commit holds a `.env` file.
   3. It sends the `.env` values, except the names in `env_rules`, and prints only the names. When `deployer` has no app record before the push, the values arrive after the build started. Run `golaunchd deploy` again to use them.
   4. It pushes to `main`, waits for the build, and prints the app address or "Build failed" with the last lines of the build log. When the app is live, it opens `https://launchd.eu/apps/<app name>`.
+- `golaunchd mcp` runs an MCP server over stdio for AI tools, with two tools:
+  - `deploy` takes a zip from Downloads, or a full path, and pushes it. When the app name is taken, it asks before a replace.
+  - `status` shows whether an app is building, live or failed.
 
 ## Development
 
