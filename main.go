@@ -15,6 +15,7 @@ const usage = `Usage:
   golaunchd login                                     Log in to Launchd in the browser.
   golaunchd logout                                    Log this computer out.
   golaunchd deploy [--name <app name>] [--no-browser] Deploy the app in this folder.
+  golaunchd mcp                                       Run the MCP server for AI tools.
 `
 
 func main() {
@@ -69,6 +70,8 @@ func execute(cli *CLI, args []string) error {
 				return err
 			}
 			return cli.Deploy(*name, *noBrowser)
+		case "mcp":
+			return runMCPServer(cli)
 		}
 	}
 	fmt.Fprint(os.Stderr, usage)
