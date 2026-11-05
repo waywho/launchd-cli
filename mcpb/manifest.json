@@ -3,11 +3,18 @@
   "name": "launchd",
   "display_name": "Launchd",
   "version": "0.0.0",
-  "description": "Deploy an app to Launchd from a zip, and see whether it is live.",
+  "description": "Put an app live on Launchd from a zip, and see when it is live.",
+  "long_description": "Launchd puts the apps that you make with AI on the internet. Tell Claude: put my app on Launchd. Claude sends the zip from Downloads to Launchd, and Launchd builds and runs the app on its servers in the EU. Nothing builds or runs on your computer. The first time, your browser opens so that you can sign in. Before Claude replaces a live app, it asks you. Only the people that you invite can open your apps.",
   "author": {
-    "name": "Launchd"
+    "name": "Launchd",
+    "email": "info@launchd.eu",
+    "url": "https://launchd.eu"
   },
   "homepage": "https://launchd.eu",
+  "documentation": "https://github.com/waywho/launchd-cli#readme",
+  "support": "mailto:info@launchd.eu",
+  "privacy_policies": ["https://launchd.eu/privacy"],
+  "keywords": ["deploy", "hosting", "apps", "launchd"],
   "repository": {
     "type": "git",
     "url": "https://github.com/waywho/launchd-cli"
