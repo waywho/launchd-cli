@@ -38,11 +38,18 @@ func main() {
 		claudeDir = filepath.Join(home, ".claude")
 	}
 	stdin, err := os.Stdin.Stat()
+	downloads, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	downloads = filepath.Join(downloads, "Downloads")
+
 	cli := &CLI{
 		API: "https://auth.launchd.eu", Git: "https://git.launchd.eu", Public: "https://launchd.eu",
-		ConfigDir: filepath.Join(configDir, "launchd"), ClaudeDir: claudeDir, Dir: dir, In: os.Stdin, Out: os.Stdout,
-		Interactive: err == nil && stdin.Mode()&os.ModeCharDevice != 0, OpenBrowser: openBrowser,
-		PollInterval: 3 * time.Second, DeployWait: time.Minute,
+		ConfigDir: filepath.Join(configDir, "launchd"), ClaudeDir: claudeDir, Dir: dir, Downloads: downloads,
+		In: os.Stdin, Out: os.Stdout, Interactive: err == nil && stdin.Mode()&os.ModeCharDevice != 0,
+		OpenBrowser: openBrowser, PollInterval: 3 * time.Second, DeployWait: time.Minute,
 	}
 	if err := execute(cli, os.Args[1:]); err != nil {
 		if !errors.Is(err, errBuildFailed) && !errors.Is(err, flag.ErrHelp) {

@@ -61,12 +61,12 @@ var (
 )
 
 type CLI struct {
-	API, Git, Public, ConfigDir, ClaudeDir, Dir string
-	In                                          io.Reader
-	Out                                         io.Writer
-	Interactive                                 bool
-	OpenBrowser                                 func(string) error
-	PollInterval, DeployWait                    time.Duration
+	API, Git, Public, ConfigDir, ClaudeDir, Dir, Downloads string
+	In                                                     io.Reader
+	Out                                                    io.Writer
+	Interactive                                            bool
+	OpenBrowser                                            func(string) error
+	PollInterval, DeployWait                               time.Duration
 }
 
 type loginAnswer struct {
@@ -229,17 +229,8 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 		}
 	}
 
-	if err := c.commit(cfg.Username); err != nil {
+	if err := c.commitAndPush(cfg, name, firstDeploy); err != nil {
 		return err
-	}
-	if firstDeploy {
-		if _, err := c.git("remote", "add", "launchd", c.remoteURL(cfg.Username, name)); err != nil {
-			return err
-		}
-	}
-	fmt.Fprintf(c.Out, "Sending %s to Launchd.\n", name)
-	if _, err := c.git("push", "-q", "launchd", "HEAD:refs/heads/main"); err != nil {
-		return fmt.Errorf("Git cannot push the app. If the error is about the login, run golaunchd login.\n%w", err)
 	}
 
 	fmt.Fprintln(c.Out, "Building. This can take some minutes.")
@@ -463,6 +454,22 @@ func (c *CLI) request(method, path, token string, body, out any) (int, error) {
 		}
 	}
 	return response.StatusCode, nil
+}
+
+func (c *CLI) commitAndPush(cfg config, name string, firstDeploy bool) error {
+	if err := c.commit(cfg.Username); err != nil {
+		return err
+	}
+	if firstDeploy {
+		if _, err := c.git("remote", "add", "launchd", c.remoteURL(cfg.Username, name)); err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(c.Out, "Sending %s to Launchd.\n", name)
+	if _, err := c.git("push", "-q", "launchd", "HEAD:refs/heads/main"); err != nil {
+		return fmt.Errorf("Git cannot push the app. If the error is about the login, run golaunchd login.\n%w", err)
+	}
+	return nil
 }
 
 func (c *CLI) git(args ...string) (string, error) { return runGit(c.Dir, "", args...) }
