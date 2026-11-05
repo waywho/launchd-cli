@@ -297,7 +297,11 @@ func appName(name string) string {
 }
 
 func (c *CLI) readSecrets(rules map[string][]string) (map[string]string, error) {
-	data, err := os.ReadFile(filepath.Join(c.Dir, ".env"))
+	return c.readSecretsAt(c.Dir, rules)
+}
+
+func (c *CLI) readSecretsAt(dir string, rules map[string][]string) (map[string]string, error) {
+	data, err := os.ReadFile(filepath.Join(dir, ".env"))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}

@@ -117,14 +117,14 @@ func (c *CLI) DeployZip(zipName string, replace bool) (string, error) {
 		return "", err
 	}
 
-	dir := c.Dir
-	c.Dir = workDir
-	defer func() { c.Dir = dir }()
-
-	secrets, err := c.readSecrets(rules)
+	secrets, err := c.readSecretsAt(workDir, rules)
 	if err != nil {
 		return "", err
 	}
+
+	dir := c.Dir
+	c.Dir = workDir
+	defer func() { c.Dir = dir }()
 
 	if _, err := c.git("init", "-q", "-b", "main"); err != nil {
 		return "", err

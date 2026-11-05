@@ -23,6 +23,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	dir, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -30,20 +35,10 @@ func main() {
 	}
 	claudeDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	if claudeDir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
 		claudeDir = filepath.Join(home, ".claude")
 	}
 	stdin, err := os.Stdin.Stat()
-	downloads, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	downloads = filepath.Join(downloads, "Downloads")
+	downloads := filepath.Join(home, "Downloads")
 
 	cli := &CLI{
 		API: "https://auth.launchd.eu", Git: "https://git.launchd.eu", Public: "https://launchd.eu",
