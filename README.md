@@ -34,4 +34,5 @@ Add the label `major`, `minor` or `patch` to a PR. Its merge makes the release.
 - Installer test: `sh test/install_test.sh`. It builds `golaunchd` and runs `install.sh` with a temp `HOME`. `GOLAUNCHD_DOWNLOAD_URL` sets the download address, and `GOLAUNCHD_LINK_DIR` sets the link folder.
 - Lint: `gofmt -l .` (no output) and `go vet ./...`.
 - Build: `./build.sh` puts the five binaries in `dist/`.
-- Release: merge a labelled PR. The workflow `release.yml` makes the release, then attaches the binaries and both install scripts.
+- Claude desktop extension: `./pack-mcpb.sh [version]` runs after `./build.sh`. It makes one universal macOS binary with `lipo`, and packs `dist/launchd-darwin.mcpb` and `dist/launchd-windows.mcpb` from `mcpb/manifest.json`. The extension runs `golaunchd mcp`. On a local run, the macOS binary is not signed.
+- Release: merge a labelled PR. The workflow `release.yml` makes the release, then attaches the binaries and both install scripts. Then the job `mcpb` signs and notarizes the macOS binary on `macos-latest`, and attaches both `.mcpb` files. It uses the secrets `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `NOTARY_KEY`, `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID`.

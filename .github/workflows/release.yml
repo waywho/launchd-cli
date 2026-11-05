@@ -23,6 +23,9 @@ jobs:
     concurrency:
       group: pr-to-release
       cancel-in-progress: false
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,5 +40,49 @@ jobs:
         uses: waywho/pr-to-release@v1
       - if: steps.release.outputs.released == 'true'
         run: ./build.sh && gh release upload "${{ steps.release.outputs.tag }}" dist/* install.sh install.ps1
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  mcpb:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Import the signing certificate
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(openssl rand -base64 24)
+          printf '%s' "$MACOS_CERT_P12" | base64 --decode -o "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -t cert -f pkcs12 -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security find-identity -v -p codesigning "$keychain"
+      - name: Write the notary key
+        env:
+          NOTARY_KEY: ${{ secrets.NOTARY_KEY }}
+        run: printf '%s' "$NOTARY_KEY" > "$RUNNER_TEMP/notary.p8"
+      - name: Build, sign, notarize and pack
+        run: ./build.sh && ./pack-mcpb.sh "${TAG#v}"
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+          CODESIGN_IDENTITY: Developer ID Application
+          NOTARY_KEY_PATH: ${{ runner.temp }}/notary.p8
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+      - run: gh release upload "${{ needs.release.outputs.tag }}" dist/launchd-darwin.mcpb dist/launchd-windows.mcpb
         env:
           GH_TOKEN: ${{ github.token }}
