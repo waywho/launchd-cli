@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestZipAppName(t *testing.T) {
@@ -105,11 +106,34 @@ func TestDeployZipRefusesAnEmptyName(t *testing.T) {
 	writeZip(t, zipPath, map[string]string{"app.rb": "puts 1\n"})
 
 	_, err := env.cli.DeployZip("(1).zip", false)
-	if err == nil || !strings.Contains(err.Error(), "The app name must have a letter or a digit") {
+	want := "The app name comes from the zip name, and the zip name has no letter or digit. Ask the user to rename the zip, then call deploy again with the new name."
+	if err == nil || err.Error() != want {
 		t.Fatalf("got %v", err)
 	}
 	if files := env.pushedFiles(t, "(1)"); len(files) != 0 {
 		t.Errorf("pushed %v", files)
+	}
+}
+
+func TestDeployZipKeepsTheDeployWhenTheAppRecordIsLate(t *testing.T) {
+	env := newDeployEnv(t, "my-app")
+	env.api.statuses = []string{"missing"}
+	defer func(wait time.Duration) { appRecordWait = wait }(appRecordWait)
+	appRecordWait = 10 * time.Millisecond
+	env.cli.Downloads = t.TempDir()
+	writeZip(t, filepath.Join(env.cli.Downloads, "my-app.zip"), map[string]string{
+		"Dockerfile": "FROM ruby\n", ".env": "STRIPE_KEY=x\n",
+	})
+
+	name, err := env.cli.DeployZip("my-app.zip", false)
+	if err != nil {
+		t.Fatalf("%v\n%s", err, env.out)
+	}
+	if name != "my-app" {
+		t.Errorf("name = %q", name)
+	}
+	if !strings.Contains(env.out.String(), "The secrets from .env are not sent, because Launchd does not have the app yet. Deploy the zip again with replace set to true to send them.") {
+		t.Errorf("output:\n%s", env.out)
 	}
 }
 
@@ -122,7 +146,8 @@ func TestDeployZipAsksBeforeReplacing(t *testing.T) {
 	writeZip(t, zipPath, map[string]string{"app.rb": "puts 1\n"})
 
 	_, err := env.cli.DeployZip("my-app.zip", false)
-	if err == nil || !errors.Is(err, errReplaceNeeded) {
+	want := "Replace the live app my-app? Ask the user. If they say yes, call deploy again with replace set to true."
+	if !errors.Is(err, errReplaceNeeded) || err.Error() != want {
 		t.Fatalf("got %v", err)
 	}
 	if files := env.pushedFiles(t, "my-app"); len(files) != 0 {

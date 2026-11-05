@@ -11,7 +11,18 @@ import (
 	"time"
 )
 
-var errReplaceNeeded = errors.New("replace needed")
+var (
+	errReplaceNeeded = errors.New("replace needed")
+	appRecordWait    = 30 * time.Second
+)
+
+type replaceNeededError struct{ name string }
+
+func (e replaceNeededError) Error() string {
+	return fmt.Sprintf("Replace the live app %s? Ask the user. If they say yes, call deploy again with replace set to true.", e.name)
+}
+
+func (e replaceNeededError) Is(target error) bool { return target == errReplaceNeeded }
 
 func zipAppName(fileName string) string {
 	name := strings.TrimSuffix(fileName, ".zip")
@@ -86,7 +97,7 @@ func (c *CLI) DeployZip(zipName string, replace bool) (string, error) {
 	}
 	name := zipAppName(filepath.Base(zipPath))
 	if name == "" {
-		return "", fmt.Errorf("The app name must have a letter or a digit. Run golaunchd deploy --name <another name>.")
+		return "", errors.New("The app name comes from the zip name, and the zip name has no letter or digit. Ask the user to rename the zip, then call deploy again with the new name.")
 	}
 
 	cfg, err := c.loadConfig()
@@ -99,7 +110,7 @@ func (c *CLI) DeployZip(zipName string, replace bool) (string, error) {
 		return "", err
 	}
 	if !available && !replace {
-		return "", fmt.Errorf("Replace the live app %s? Ask the user. If they say yes, call deploy again with replace set to true.: %w", name, errReplaceNeeded)
+		return "", replaceNeededError{name}
 	}
 
 	var rules map[string][]string
@@ -152,18 +163,19 @@ func (c *CLI) DeployZip(zipName string, replace bool) (string, error) {
 	}
 
 	if firstDeploy && len(secrets) > 0 {
-		start := time.Now()
-		for time.Since(start) < 30*time.Second {
-			code, statErr := c.request(http.MethodGet, "/api/apps/"+url.PathEscape(name)+"/status", cfg.Token, nil, nil)
-			if code != http.StatusNotFound && !errors.Is(statErr, errNotFound) {
+		for start := time.Now(); time.Since(start) < appRecordWait; time.Sleep(c.PollInterval) {
+			if _, err := c.request(http.MethodGet, "/api/apps/"+url.PathEscape(name)+"/status", cfg.Token, nil, nil); !errors.Is(err, errNotFound) {
 				break
 			}
-			time.Sleep(time.Second)
 		}
-		if err := c.sendSecrets(cfg.Token, name, secrets); err != nil {
+		switch err := c.sendSecrets(cfg.Token, name, secrets); {
+		case errors.Is(err, errNotFound):
+			fmt.Fprintln(c.Out, "The secrets from .env are not sent, because Launchd does not have the app yet. Deploy the zip again with replace set to true to send them.")
+		case err != nil:
 			return "", err
+		default:
+			fmt.Fprintln(c.Out, "The first build started before Launchd had the secrets. Deploy again to use them.")
 		}
-		fmt.Fprintln(c.Out, "The first build started before Launchd had the secrets. Deploy again to use them.")
 	}
 
 	return name, nil
