@@ -624,7 +624,7 @@ func TestDeployKeepsWaitingWhileLaunchdRestarts(t *testing.T) {
 	}
 }
 
-func TestDeployOpensTheAppPageWhenLive(t *testing.T) {
+func TestDeployOpensTheLiveAppAndPrintsTheAppPage(t *testing.T) {
 	env := newDeployEnv(t, "crm")
 	env.api.statuses = []string{"missing", "deploying", "live"}
 	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1"})
@@ -633,8 +633,11 @@ func TestDeployOpensTheAppPageWhenLive(t *testing.T) {
 		t.Fatalf("%v\n%s", err, env.out)
 	}
 
-	if !slices.Equal(env.browsers, []string{"https://launchd.eu/apps/crm"}) {
+	if !slices.Equal(env.browsers, []string{"https://crm-tally.apps.golaunchd.eu"}) {
 		t.Errorf("opened %v", env.browsers)
+	}
+	if !strings.Contains(env.out.String(), "Invite people on the app page: https://launchd.eu/apps/crm") {
+		t.Errorf("output does not name the app page:\n%s", env.out)
 	}
 }
 

@@ -251,9 +251,8 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 
 	fmt.Fprintf(c.Out, "Your app is live at https://%s\n", host)
 	if !noBrowser {
-		page := c.Public + "/apps/" + url.PathEscape(name)
-		fmt.Fprintf(c.Out, "Invite people on the app page: %s\n", page)
-		c.OpenBrowser(page)
+		fmt.Fprintf(c.Out, "Invite people on the app page: %s/apps/%s\n", c.Public, url.PathEscape(name))
+		c.OpenBrowser("https://" + host)
 	}
 	return nil
 }
