@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-06
+### Changed
+- The Claude desktop extension shows a longer description, the website, the privacy policy and a support address.
+
 ## [0.2.0] - 2026-11-05
 ### Added
 - Add `AGENTS.md` with the rule that each PR description has a changelog heading.
@@ -28,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Release from a labelled PR with pr-to-release
 
-[Unreleased]: https://github.com/waywho/launchd-cli/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/waywho/launchd-cli/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/waywho/launchd-cli/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/waywho/launchd-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/waywho/launchd-cli/releases/tag/v0.1.0
