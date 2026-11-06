@@ -157,8 +157,8 @@ func TestMCPDeployAsksBeforeReplacing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !result.IsError {
-		t.Fatal("expected error for replace")
+	if result.IsError {
+		t.Error("the replace question shows as an error")
 	}
 	var text strings.Builder
 	for _, c := range result.Content {
@@ -196,6 +196,57 @@ func TestMCPStatusGivesTheLogTailWhenFailed(t *testing.T) {
 	if !strings.Contains(text.String(), "Gem::MissingSpecError: rails") {
 		t.Errorf("result does not show log tail: %q", text.String())
 	}
+}
+
+func TestMCPDeployGivesTheAppAddress(t *testing.T) {
+	env := newDeployEnv(t, "my-app")
+	env.cli.Downloads = t.TempDir()
+	writeZip(t, filepath.Join(env.cli.Downloads, "my-app.zip"), map[string]string{"app.rb": "puts 1\n"})
+
+	sess, cleanup := newMCPEnv(t, env.cli)
+	defer cleanup()
+
+	result, err := sess.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "deploy",
+		Arguments: map[string]any{"zip_name": "my-app.zip"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if text := mcpText(result); !strings.Contains(text, "The app address is https://my-app-tally.apps.golaunchd.eu.") {
+		t.Errorf("result has no address: %q", text)
+	}
+}
+
+func TestMCPStatusGivesTheAppAddressWhenLive(t *testing.T) {
+	env := newDeployEnv(t)
+	env.api.statuses = []string{"live"}
+
+	sess, cleanup := newMCPEnv(t, env.cli)
+	defer cleanup()
+
+	result, err := sess.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "status",
+		Arguments: map[string]any{"name": "my-app"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if text := mcpText(result); !strings.Contains(text, "App my-app: live at https://my-app-tally.apps.golaunchd.eu.") {
+		t.Errorf("result has no address: %q", text)
+	}
+}
+
+func mcpText(result *mcp.CallToolResult) string {
+	var text strings.Builder
+	for _, c := range result.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			text.WriteString(tc.Text)
+		}
+	}
+	return text.String()
 }
 
 func TestMCPLogsInOnceWhenLoggedOut(t *testing.T) {
