@@ -27,7 +27,7 @@ Add the label `major`, `minor` or `patch` to a PR. Its merge makes the release.
   1. On the first deploy, it checks that the app name is free. The default name is the folder name, in lowercase, with `-` for other characters. It adds the Git remote `launchd` and leaves other remotes alone.
   2. It commits all files that `.gitignore` allows, but never a `.env` file. It stops when an earlier commit holds a `.env` file.
   3. It sends the `.env` values, except the names in `env_rules`, and prints only the names. When `deployer` has no app record before the push, the values arrive after the build started. Run `golaunchd deploy` again to use them.
-  4. It pushes to `main`, waits for the build, and prints the app address or "Build failed" with the last lines of the build log. When the app is live, it opens `https://launchd.eu/apps/<app name>`.
+  4. It pushes to `main`, waits for the build, and prints the app address or "Build failed" with the last lines of the build log. When the app is live, it opens the app address, and prints the app page `https://launchd.eu/apps/<app name>` for invitations.
 - `golaunchd mcp` runs an MCP server over stdio for AI tools, with two tools:
   - `deploy` takes a zip from Downloads, or a full path, and pushes it. When the app name is taken, it asks before a replace.
   - `status` shows whether an app is building, live or failed.
