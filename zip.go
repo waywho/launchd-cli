@@ -100,7 +100,21 @@ func unpackZipEntry(entry *zip.File, target string, total *int) error {
 	if probeErr != nil && !errors.Is(probeErr, io.EOF) {
 		return fmt.Errorf("The zip file is not valid: %w", probeErr)
 	}
-	return nil
+	return chmodScript(target)
+}
+
+// A zip from Windows or from Python's writestr has no execute bit, but "#!" marks a script, for example bin/docker-entrypoint.
+func chmodScript(target string) error {
+	file, err := os.Open(target)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	head := make([]byte, 2)
+	if _, err := io.ReadFull(file, head); err != nil || string(head) != "#!" {
+		return nil
+	}
+	return os.Chmod(target, 0o755)
 }
 
 func dropsZipEntry(name string) bool {
