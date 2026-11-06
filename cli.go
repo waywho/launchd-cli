@@ -81,6 +81,7 @@ type config struct {
 type appStatus struct {
 	Status  string `json:"status"`
 	LogTail string `json:"log_tail"`
+	Host    string `json:"-"`
 }
 
 func (c *CLI) Login() error {

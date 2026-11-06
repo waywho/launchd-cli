@@ -61,6 +61,9 @@ func mcpDeploy(cli *CLI, args deployArgs) (*mcp.CallToolResult, any, error) {
 		}
 		name, err = mc.DeployZip(args.ZipName, replace)
 	}
+	if errors.Is(err, errReplaceNeeded) {
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}}}, nil, nil
+	}
 	if err != nil {
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}}, IsError: true}, nil, nil
 	}
@@ -89,6 +92,9 @@ func mcpStatus(cli *CLI, args statusArgs) (*mcp.CallToolResult, any, error) {
 	}
 
 	text := fmt.Sprintf("App %s: %s.", args.Name, status.Status)
+	if status.Status == "live" {
+		text = fmt.Sprintf("App %s: live at https://%s.", args.Name, status.Host)
+	}
 	if status.Status == "failed" && status.LogTail != "" {
 		text += "\n" + status.LogTail
 	}

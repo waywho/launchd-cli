@@ -105,7 +105,7 @@ func (c *CLI) DeployZip(zipName string, replace bool) (string, error) {
 		return "", errLoggedOut
 	}
 
-	_, available, err := c.checkName(cfg.Token, name)
+	host, available, err := c.checkName(cfg.Token, name)
 	if err != nil {
 		return "", err
 	}
@@ -178,6 +178,7 @@ func (c *CLI) DeployZip(zipName string, replace bool) (string, error) {
 		}
 	}
 
+	fmt.Fprintf(c.Out, "The app address is https://%s.\n", host)
 	return name, nil
 }
 
@@ -190,5 +191,6 @@ func (c *CLI) Status(name string) (appStatus, error) {
 	if _, err := c.request(http.MethodGet, "/api/apps/"+url.PathEscape(name)+"/status", cfg.Token, nil, &status); err != nil {
 		return status, err
 	}
-	return status, nil
+	status.Host, _, err = c.checkName(cfg.Token, name)
+	return status, err
 }
