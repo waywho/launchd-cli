@@ -245,6 +245,31 @@ func TestUnpackZipDropsGitAndMacFiles(t *testing.T) {
 	}
 }
 
+func TestUnpackZipMakesAScriptExecutableInAZipWithNoUnixModes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "windows.zip")
+	writeZip(t, path, map[string]string{"bin/run": "#!/bin/sh\necho hi\n", "Dockerfile": "FROM ruby\n"})
+	dir := t.TempDir()
+
+	if err := unpackZip(path, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	script, err := os.Stat(filepath.Join(dir, "bin/run"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if script.Mode().Perm() != 0o755 {
+		t.Errorf("bin/run mode: %o", script.Mode().Perm())
+	}
+	plain, err := os.Stat(filepath.Join(dir, "Dockerfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.Mode().Perm()&0o111 != 0 {
+		t.Errorf("Dockerfile mode: %o", plain.Mode().Perm())
+	}
+}
+
 func TestUnpackZipRefusesAFolderThatIsNotEmpty(t *testing.T) {
 	zipPath := filepath.Join(t.TempDir(), "app.zip")
 	writeZip(t, zipPath, map[string]string{"Dockerfile": "FROM ruby\n"})

@@ -13,6 +13,8 @@ import (
 const (
 	maxZipBytes      = 50 << 20
 	maxUnpackedBytes = 200 << 20
+	zipCreatorUnix   = 3
+	zipCreatorMacOS  = 19
 )
 
 func unpackZip(zipPath, dir string) error {
@@ -100,7 +102,24 @@ func unpackZipEntry(entry *zip.File, target string, total *int) error {
 	if probeErr != nil && !errors.Is(probeErr, io.EOF) {
 		return fmt.Errorf("The zip file is not valid: %w", probeErr)
 	}
-	return nil
+	return chmodScript(entry, target)
+}
+
+// A zip from Windows has no unix modes, but "#!" marks a script, for example bin/docker-entrypoint.
+func chmodScript(entry *zip.File, target string) error {
+	if creator := entry.CreatorVersion >> 8; creator == zipCreatorUnix || creator == zipCreatorMacOS {
+		return nil
+	}
+	file, err := os.Open(target)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	head := make([]byte, 2)
+	if _, err := io.ReadFull(file, head); err != nil || string(head) != "#!" {
+		return nil
+	}
+	return os.Chmod(target, 0o755)
 }
 
 func dropsZipEntry(name string) bool {
