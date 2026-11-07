@@ -32,6 +32,8 @@ Add the label `major`, `minor` or `patch` to a PR. Its merge makes the release.
   - `deploy` takes a zip from Downloads, or a full path, and pushes it. When the app name is taken, it asks before a replace.
   - `status` shows whether an app is building, live or failed.
 
+`golaunchd` has no command to invite people. To invite a person, open `https://launchd.eu/apps/<app name>`, type the email address, and click **Invite**. The person gets an email with the app address.
+
 ## Development
 
 - Test: `go test ./...`. The tests use a fake `launchd` API and local bare Git repos. No test calls the real server.
