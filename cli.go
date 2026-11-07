@@ -145,7 +145,7 @@ func (c *CLI) Login() error {
 	if err := os.WriteFile(instructions, []byte(aiInstructions), 0o644); err != nil {
 		return err
 	}
-	if answer.Skill == "yes" {
+	if answer.Skill == "yes" || skill == "present" {
 		if err := c.writeSkill(); err != nil {
 			return err
 		}
@@ -471,11 +471,11 @@ func (c *CLI) commitAndPush(cfg config, name string, firstDeploy bool) error {
 			return err
 		}
 	}
-	files, err := c.git("ls-files")
+	files, err := c.git("ls-files", "-z")
 	if err != nil {
 		return err
 	}
-	for _, warning := range dataFileWarnings(strings.Split(files, "\n")) {
+	for _, warning := range dataFileWarnings(strings.Split(files, "\x00")) {
 		fmt.Fprintln(c.Out, warning)
 	}
 	fmt.Fprintf(c.Out, "Sending %s to Launchd.\n", name)
