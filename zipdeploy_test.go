@@ -194,6 +194,24 @@ func TestDeployZipReplacesOnTopOfTheHistory(t *testing.T) {
 	}
 }
 
+func TestDeployZipWarnsAboutADatabaseFileAndStillPushes(t *testing.T) {
+	env := newDeployEnv(t, "my-app")
+	downloads := t.TempDir()
+	env.cli.Downloads = downloads
+	writeZip(t, filepath.Join(downloads, "my-app.zip"), map[string]string{"app.rb": "puts 1\n", "db/app.db": "x"})
+
+	if _, err := env.cli.DeployZip("my-app.zip", false); err != nil {
+		t.Fatalf("%v\n%s", err, env.out)
+	}
+
+	if !strings.Contains(env.out.String(), "This app has a database file outside $DATA_DIR: db/app.db. Its data is lost on each deploy.") {
+		t.Errorf("output has no warning:\n%s", env.out)
+	}
+	if files := env.pushedFiles(t, "my-app"); !slices.Equal(files, []string{"app.rb", "db/app.db"}) {
+		t.Errorf("pushed %v", files)
+	}
+}
+
 func TestDeployZipSendsSecretsWhenTheAppRecordExists(t *testing.T) {
 	env := newDeployEnv(t, "my-app")
 	downloads := t.TempDir()

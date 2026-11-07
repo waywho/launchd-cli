@@ -43,6 +43,8 @@ Run these commands in a terminal:
 ` + "`golaunchd deploy`" + ` sends the values in ` + "`.env`" + ` as secrets, and never pushes the ` + "`.env`" + ` file.
 When the build fails, it prints "Build failed" and the last lines of the build log.
 Invites and secrets are on https://launchd.eu/apps.
+Keep SQLite files and uploaded files in the folder in ` + "`$DATA_DIR`" + `. Files in other folders are lost on each deploy.
+If the Dockerfile sets a non-root USER, the Dockerfile must create /data and give it to that user.
 `
 
 const skillFile = `---
@@ -143,7 +145,7 @@ func (c *CLI) Login() error {
 	if err := os.WriteFile(instructions, []byte(aiInstructions), 0o644); err != nil {
 		return err
 	}
-	if answer.Skill == "yes" {
+	if answer.Skill == "yes" || skill == "present" {
 		if err := c.writeSkill(); err != nil {
 			return err
 		}
@@ -469,11 +471,30 @@ func (c *CLI) commitAndPush(cfg config, name string, firstDeploy bool) error {
 			return err
 		}
 	}
+	files, err := c.git("ls-files", "-z")
+	if err != nil {
+		return err
+	}
+	for _, warning := range dataFileWarnings(strings.Split(files, "\x00")) {
+		fmt.Fprintln(c.Out, warning)
+	}
 	fmt.Fprintf(c.Out, "Sending %s to Launchd.\n", name)
 	if _, err := c.git("push", "-q", "launchd", "HEAD:refs/heads/main"); err != nil {
 		return fmt.Errorf("Git cannot push the app. If the error is about the login, run golaunchd login.\n%w", err)
 	}
 	return nil
+}
+
+var databaseFileEndings = []string{".sqlite", ".sqlite3", ".db"}
+
+func dataFileWarnings(files []string) []string {
+	var warnings []string
+	for _, file := range files {
+		if slices.Contains(databaseFileEndings, path.Ext(file)) {
+			warnings = append(warnings, fmt.Sprintf("This app has a database file outside $DATA_DIR: %s. Its data is lost on each deploy.", file))
+		}
+	}
+	return warnings
 }
 
 func (c *CLI) git(args ...string) (string, error) { return runGit(c.Dir, "", args...) }

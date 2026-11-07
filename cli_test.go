@@ -305,7 +305,19 @@ func TestLoginSaysTheSkillIsPresent(t *testing.T) {
 	if skill := authorize.Query().Get("skill"); skill != "present" {
 		t.Errorf("authorize skill is %q", skill)
 	}
-	if content, _ := os.ReadFile(filepath.Join(claudeDir, "skills", "launchd", "SKILL.md")); string(content) != "old" {
+}
+
+func TestLoginUpdatesAnExistingSkill(t *testing.T) {
+	isolateGit(t)
+	api := newFakeAPI(t)
+	cli, claudeDir := newLoginCLI(t, api)
+	writeFiles(t, claudeDir, map[string]string{"skills/launchd/SKILL.md": "old"})
+
+	if err := cli.Login(); err != nil {
+		t.Fatal(err)
+	}
+
+	if content, _ := os.ReadFile(filepath.Join(claudeDir, "skills", "launchd", "SKILL.md")); string(content) != skillFile {
 		t.Errorf("skill file holds %q", content)
 	}
 }
@@ -638,6 +650,58 @@ func TestDeployOpensTheLiveAppAndPrintsTheAppPage(t *testing.T) {
 	}
 	if !strings.Contains(env.out.String(), "Invite people on the app page: https://launchd.eu/apps/crm") {
 		t.Errorf("output does not name the app page:\n%s", env.out)
+	}
+}
+
+func TestAIInstructionsNameTheDataFolder(t *testing.T) {
+	for _, line := range []string{
+		"Keep SQLite files and uploaded files in the folder in `$DATA_DIR`. Files in other folders are lost on each deploy.",
+		"If the Dockerfile sets a non-root USER, the Dockerfile must create /data and give it to that user.",
+	} {
+		if !strings.Contains(aiInstructions, line) {
+			t.Errorf("aiInstructions does not contain %q", line)
+		}
+	}
+}
+
+func TestDataFileWarnings(t *testing.T) {
+	warnings := dataFileWarnings([]string{"app.db", "db/x.sqlite3", "old.sqlite", "app.dbx", "README.md"})
+	want := []string{
+		"This app has a database file outside $DATA_DIR: app.db. Its data is lost on each deploy.",
+		"This app has a database file outside $DATA_DIR: db/x.sqlite3. Its data is lost on each deploy.",
+		"This app has a database file outside $DATA_DIR: old.sqlite. Its data is lost on each deploy.",
+	}
+	if !slices.Equal(warnings, want) {
+		t.Errorf("warnings %q, want %q", warnings, want)
+	}
+}
+
+func TestDeployWarnsAboutADatabaseFileAndStillPushes(t *testing.T) {
+	env := newDeployEnv(t, "crm")
+	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1", "db/app.db": "x"})
+
+	if err := env.cli.Deploy("", true); err != nil {
+		t.Fatalf("%v\n%s", err, env.out)
+	}
+
+	if !strings.Contains(env.out.String(), "This app has a database file outside $DATA_DIR: db/app.db. Its data is lost on each deploy.") {
+		t.Errorf("output has no warning:\n%s", env.out)
+	}
+	if files := env.pushedFiles(t, "crm"); !slices.Equal(files, []string{"app.rb", "db/app.db"}) {
+		t.Errorf("pushed %v", files)
+	}
+}
+
+func TestDeployWarnsAboutADatabaseFileWithANonASCIIName(t *testing.T) {
+	env := newDeployEnv(t, "crm")
+	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1", "données.db": "x"})
+
+	if err := env.cli.Deploy("", true); err != nil {
+		t.Fatalf("%v\n%s", err, env.out)
+	}
+
+	if !strings.Contains(env.out.String(), "This app has a database file outside $DATA_DIR: données.db. Its data is lost on each deploy.") {
+		t.Errorf("output has no warning:\n%s", env.out)
 	}
 }
 
