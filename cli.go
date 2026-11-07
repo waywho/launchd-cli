@@ -41,7 +41,7 @@ Run these commands in a terminal:
 - ` + "`golaunchd logout`" + `: logs this computer out.
 
 ` + "`golaunchd deploy`" + ` sends the values in ` + "`.env`" + ` as secrets, and never pushes the ` + "`.env`" + ` file.
-When the build fails, it prints "Build failed" and the last lines of the build log.
+When the deploy fails, it prints "Deploy failed" and the reason: the last lines of the build log, or why the app does not start.
 Invites and secrets are on https://launchd.eu/apps.
 `
 
@@ -54,7 +54,7 @@ description: Use when the user wants to deploy an app or put it live on Launchd.
 
 var (
 	errLoggedOut   = errors.New("You are not logged in, or your login ended. Run golaunchd login.")
-	errBuildFailed = errors.New("The build failed.")
+	errBuildFailed = errors.New("The deploy failed.")
 	errNotFound    = errors.New("not found")
 	notAppNameChar = regexp.MustCompile(`[^a-z0-9]+`)
 	httpClient     = &http.Client{Timeout: 30 * time.Second}
@@ -246,7 +246,7 @@ func (c *CLI) Deploy(name string, noBrowser bool) error {
 		fmt.Fprintln(c.Out, "The first build started before Launchd had the secrets. Run golaunchd deploy again to use them.")
 	}
 	if status.Status == "failed" {
-		fmt.Fprintf(c.Out, "Build failed. The last lines of the build log:\n%s\n", status.LogTail)
+		fmt.Fprintf(c.Out, "Deploy failed. The reason:\n%s\n", status.LogTail)
 		return errBuildFailed
 	}
 

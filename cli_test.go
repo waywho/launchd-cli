@@ -595,15 +595,16 @@ func TestDeployMakesTheFolderNameAValidAppName(t *testing.T) {
 	}
 }
 
-func TestDeployPrintsBuildFailedWithLogTail(t *testing.T) {
+func TestDeployPrintsDeployFailedWithTheReason(t *testing.T) {
 	env := newDeployEnv(t, "crm")
 	env.api.statuses = []string{"deploying", "failed"}
-	env.api.logTail = "Gem::MissingSpecError: rails"
+	env.api.logTail = "The app does not start."
 	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1"})
 
 	err := env.cli.Deploy("", false)
 
-	if err == nil || !strings.Contains(env.out.String(), "Build failed") || !strings.Contains(env.out.String(), "Gem::MissingSpecError: rails") {
+	if err == nil || !strings.Contains(env.out.String(), "Deploy failed") || strings.Contains(env.out.String(), "Build failed") ||
+		!strings.Contains(env.out.String(), "The app does not start.") {
 		t.Fatalf("got %v\n%s", err, env.out)
 	}
 	if len(env.browsers) != 0 {
