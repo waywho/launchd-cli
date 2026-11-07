@@ -641,6 +641,45 @@ func TestDeployOpensTheLiveAppAndPrintsTheAppPage(t *testing.T) {
 	}
 }
 
+func TestAIInstructionsNameTheDataFolder(t *testing.T) {
+	for _, line := range []string{
+		"Keep SQLite files and uploaded files in the folder in `$DATA_DIR`. Files in other folders are lost on each deploy.",
+		"If the Dockerfile sets a non-root USER, the Dockerfile must create /data and give it to that user.",
+	} {
+		if !strings.Contains(aiInstructions, line) {
+			t.Errorf("aiInstructions does not contain %q", line)
+		}
+	}
+}
+
+func TestDataFileWarnings(t *testing.T) {
+	warnings := dataFileWarnings([]string{"app.db", "db/x.sqlite3", "old.sqlite", "app.dbx", "README.md"})
+	want := []string{
+		"This app has a database file outside $DATA_DIR: app.db. Its data is lost on each deploy.",
+		"This app has a database file outside $DATA_DIR: db/x.sqlite3. Its data is lost on each deploy.",
+		"This app has a database file outside $DATA_DIR: old.sqlite. Its data is lost on each deploy.",
+	}
+	if !slices.Equal(warnings, want) {
+		t.Errorf("warnings %q, want %q", warnings, want)
+	}
+}
+
+func TestDeployWarnsAboutADatabaseFileAndStillPushes(t *testing.T) {
+	env := newDeployEnv(t, "crm")
+	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1", "db/app.db": "x"})
+
+	if err := env.cli.Deploy("", true); err != nil {
+		t.Fatalf("%v\n%s", err, env.out)
+	}
+
+	if !strings.Contains(env.out.String(), "This app has a database file outside $DATA_DIR: db/app.db. Its data is lost on each deploy.") {
+		t.Errorf("output has no warning:\n%s", env.out)
+	}
+	if files := env.pushedFiles(t, "crm"); !slices.Equal(files, []string{"app.rb", "db/app.db"}) {
+		t.Errorf("pushed %v", files)
+	}
+}
+
 func TestDeployWithNoBrowserOpensNothing(t *testing.T) {
 	env := newDeployEnv(t, "crm")
 	writeFiles(t, env.appDir, map[string]string{"app.rb": "puts 1"})
