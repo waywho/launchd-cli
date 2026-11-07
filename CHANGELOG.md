@@ -6,8 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.2.4] - 2026-11-07
+### Added
+- The AI instructions say to keep SQLite files and uploaded files in `$DATA_DIR`.
+- The AI instructions say that a Dockerfile with a non-root `USER` must create `/data` and give it to that user.
+- `golaunchd deploy` and the MCP `deploy` tool print a warning for each `.sqlite`, `.sqlite3` or `.db` file in the deploy. The push still runs.
 ### Changed
 - The README says how to invite people to an app.
+- `golaunchd login` updates an existing Launchd skill file, so a builder gets the new AI instructions.
 
 ## [0.2.3] - 2026-11-06
 ### Changed
@@ -44,7 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Release from a labelled PR with pr-to-release
 
-[Unreleased]: https://github.com/waywho/launchd-cli/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/waywho/launchd-cli/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/waywho/launchd-cli/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/waywho/launchd-cli/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/waywho/launchd-cli/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/waywho/launchd-cli/compare/v0.2.0...v0.2.1
