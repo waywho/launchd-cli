@@ -34,6 +34,7 @@ const aiInstructions = `# Launchd
 Launchd puts a web app live at its own address. Only the people that the builder invites can open it.
 Run these commands in a terminal:
 
+- ` + "`golaunchd info`" + `: shows what Launchd provides and how to build an app for it. Run it before you plan an app.
 - ` + "`golaunchd deploy`" + `: run it in the app folder. It deploys the app and prints its address.
   - ` + "`--name <app name>`" + ` sets the app name. The default is the folder name. Use it when the name is taken.
   - ` + "`--no-browser`" + ` does not open the app page in the browser.
@@ -179,6 +180,19 @@ func (c *CLI) Logout() error {
 	}
 	fmt.Fprintln(c.Out, "You are logged out.")
 	return nil
+}
+
+func (c *CLI) Info() error {
+	response, err := httpClient.Get(c.Public + "/llms.txt")
+	if err != nil {
+		return errors.New("Launchd cannot show the information now. Read https://launchd.eu/llms.txt.")
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("Launchd cannot show the information now. Read https://launchd.eu/llms.txt.")
+	}
+	_, err = io.Copy(c.Out, response.Body)
+	return err
 }
 
 func (c *CLI) Deploy(name string, noBrowser bool) error {

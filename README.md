@@ -23,6 +23,7 @@ Add the label `major`, `minor` or `patch` to a PR. Its merge makes the release.
 
 - `golaunchd login` opens the browser at `auth.launchd.eu`. It stores the Forgejo token in the Git credential store for `git.launchd.eu`, and the `launchd` token in `<user config folder>/launchd/config.json` (mode `600`). It also writes `ai-instructions.md` in that folder. When Git has no credential helper, it sets the `store` helper for `git.launchd.eu` only.
 - `golaunchd logout` deletes both tokens.
+- `golaunchd info` shows what Launchd provides and how to build an app for it.
 - `golaunchd deploy [--name <app name>] [--no-browser]` runs in the app folder:
   1. On the first deploy, it checks that the app name is free. The default name is the folder name, in lowercase, with `-` for other characters. It adds the Git remote `launchd` and leaves other remotes alone.
   2. It commits all files that `.gitignore` allows, but never a `.env` file. It stops when an earlier commit holds a `.env` file.

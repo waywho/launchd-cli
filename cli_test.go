@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -716,5 +717,51 @@ func TestDeployWithNoBrowserOpensNothing(t *testing.T) {
 
 	if len(env.browsers) != 0 {
 		t.Errorf("opened %v", env.browsers)
+	}
+}
+
+func TestInfoPrintsThePageWithNoLogin(t *testing.T) {
+	pageContent := "# Launchd\n\nTest page content."
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/llms.txt" {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, pageContent)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	out := &bytes.Buffer{}
+	cli := &CLI{Public: srv.URL, Out: out}
+
+	if err := cli.Info(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.String() != pageContent {
+		t.Errorf("got %q, want %q", out.String(), pageContent)
+	}
+}
+
+func TestInfoSaysWhereToReadWhenThePageFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	out := &bytes.Buffer{}
+	cli := &CLI{Public: srv.URL, Out: out}
+
+	err := cli.Info()
+	want := "Launchd cannot show the information now. Read https://launchd.eu/llms.txt."
+	if err == nil || err.Error() != want {
+		t.Errorf("got %v, want %q", err, want)
+	}
+}
+
+func TestAIInstructionsTellTheAIToRunInfo(t *testing.T) {
+	if !strings.Contains(aiInstructions, "golaunchd info") {
+		t.Errorf("aiInstructions does not contain golaunchd info:\n%s", aiInstructions)
 	}
 }

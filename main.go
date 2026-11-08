@@ -14,6 +14,7 @@ import (
 const usage = `Usage:
   golaunchd login                                     Log in to Launchd in the browser.
   golaunchd logout                                    Log this computer out.
+  golaunchd info                                      Show what Launchd provides and how to build an app for it.
   golaunchd deploy [--name <app name>] [--no-browser] Deploy the app in this folder.
   golaunchd mcp                                       Run the MCP server for AI tools.
 `
@@ -62,6 +63,8 @@ func execute(cli *CLI, args []string) error {
 			return cli.Login()
 		case "logout":
 			return cli.Logout()
+		case "info":
+			return cli.Info()
 		case "deploy":
 			flags := flag.NewFlagSet("deploy", flag.ContinueOnError)
 			name := flags.String("name", "", "the app name (default: the folder name)")

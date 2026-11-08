@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
@@ -275,5 +277,49 @@ func TestMCPLogsInOnceWhenLoggedOut(t *testing.T) {
 	}
 	if !strings.Contains(text.String(), "The build started. Call status with the app name my-app") {
 		t.Errorf("result after auto-login: %q", text.String())
+	}
+}
+
+func TestMCPInfoReturnsThePage(t *testing.T) {
+	pageContent := "# Launchd\n\nTest page content."
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/llms.txt" {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			io.WriteString(w, pageContent)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	out := &bytes.Buffer{}
+	cli := &CLI{
+		API: "https://auth.launchd.eu", Git: "https://git.launchd.eu", Public: srv.URL,
+		ConfigDir: t.TempDir(), Dir: t.TempDir(), Out: out,
+	}
+	sess, cleanup := newMCPEnv(t, cli)
+	defer cleanup()
+
+	r, w, _ := os.Pipe()
+	old := os.Stdout
+	os.Stdout = w
+
+	result, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "info", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w.Close()
+	os.Stdout = old
+	var stdoutBuf bytes.Buffer
+	io.Copy(&stdoutBuf, r)
+
+	if stdoutBuf.Len() > 0 {
+		t.Errorf("os.Stdout has %q", stdoutBuf.String())
+	}
+	text := mcpText(result)
+	if text != pageContent {
+		t.Errorf("got %q, want %q", text, pageContent)
 	}
 }
