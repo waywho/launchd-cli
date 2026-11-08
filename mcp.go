@@ -28,6 +28,15 @@ func runMCPServer(cli *CLI) error {
 func registerMCPTools(server *mcp.Server, cli *CLI) {
 	mcp.AddTool(server,
 		&mcp.Tool{
+			Name:        "info",
+			Description: "Use before you plan an app for Launchd. Shows what Launchd provides and how to build an app for it.",
+		},
+		func(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
+			return mcpInfo(cli)
+		},
+	)
+	mcp.AddTool(server,
+		&mcp.Tool{
 			Name:        "deploy",
 			Description: "Use when the user wants to put an app live on Launchd. Launchd builds the app on its servers. Do not build or run the app on this computer.",
 		},
@@ -99,6 +108,16 @@ func mcpStatus(cli *CLI, args statusArgs) (*mcp.CallToolResult, any, error) {
 		text += "\n" + status.LogTail
 	}
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}, nil, nil
+}
+
+func mcpInfo(cli *CLI) (*mcp.CallToolResult, any, error) {
+	out := &bytes.Buffer{}
+	mc := cliForMCP(cli, out)
+
+	if err := mc.Info(); err != nil {
+		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}}, IsError: true}, nil, nil
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: out.String()}}}, nil, nil
 }
 
 func cliForMCP(cli *CLI, out io.Writer) *CLI {
