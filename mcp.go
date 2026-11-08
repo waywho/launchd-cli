@@ -38,7 +38,7 @@ func registerMCPTools(server *mcp.Server, cli *CLI) {
 	mcp.AddTool(server,
 		&mcp.Tool{
 			Name:        "status",
-			Description: "Shows whether a Launchd app is building, live, or failed, with the last lines of the build log when it failed.",
+			Description: "Shows whether a Launchd app is building, live, or failed. When it failed, it shows the reason: the last lines of the build log, or why the app does not start.",
 		},
 		func(ctx context.Context, req *mcp.CallToolRequest, args statusArgs) (*mcp.CallToolResult, any, error) {
 			return mcpStatus(cli, args)

@@ -54,7 +54,7 @@ func TestMCPListsDeployAndStatus(t *testing.T) {
 	if byName["deploy"] != wantDeploy {
 		t.Errorf("deploy description: %q", byName["deploy"])
 	}
-	wantStatus := "Shows whether a Launchd app is building, live, or failed, with the last lines of the build log when it failed."
+	wantStatus := "Shows whether a Launchd app is building, live, or failed. When it failed, it shows the reason: the last lines of the build log, or why the app does not start."
 	if byName["status"] != wantStatus {
 		t.Errorf("status description: %q", byName["status"])
 	}
