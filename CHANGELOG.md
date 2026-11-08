@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-11-08
+### Changed
+- `golaunchd deploy` prints "Deploy failed" with the reason: the last lines of the build log, or why the app does not run.
+- The MCP `status` tool description says that a failed status gives the reason.
+- `deployer` PR #32 adds a failed status for an app that does not run after a good build.
+- `TestDeployPrintsDeployFailedWithTheReason` replaces `TestDeployPrintsBuildFailedWithLogTail` and keeps its browser check.
+- Check the text in `cli.go`, `mcp.go` and `README.md`.
+
 ## [0.2.4] - 2026-11-07
 ### Added
 - The AI instructions say to keep SQLite files and uploaded files in `$DATA_DIR`.
@@ -51,7 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Release from a labelled PR with pr-to-release
 
-[Unreleased]: https://github.com/waywho/launchd-cli/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/waywho/launchd-cli/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/waywho/launchd-cli/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/waywho/launchd-cli/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/waywho/launchd-cli/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/waywho/launchd-cli/compare/v0.2.1...v0.2.2
